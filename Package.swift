@@ -3,7 +3,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "ShipKitNetworking",
+    name: "NetworkKit",
     platforms: [
         .iOS(.v15),
         .macOS(.v12),
@@ -13,8 +13,8 @@ let package = Package(
     ],
     products: [
         .library(
-            name: "ShipKitNetworking",
-            targets: ["ShipKitNetworking"]
+            name: "NetworkKit",
+            targets: ["NetworkKit"]
         )
     ],
     dependencies: [
@@ -22,7 +22,7 @@ let package = Package(
     ],
     targets: [
         .target(
-            name: "ShipKitNetworking",
+            name: "NetworkKit",
             resources: [
                 .process("Resources/Localizable.xcstrings")
             ],
