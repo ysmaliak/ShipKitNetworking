@@ -28,7 +28,7 @@ Add NetworkKit to your project through Xcode's Swift Package Manager:
 Or add it to your `Package.swift` file:
 ```swift
 dependencies: [
-    .package(url: "https://github.com/ysmaliak/NetworkKit.git", from: "1.0.0")
+    .package(url: "https://github.com/ysmaliak/NetworkKit.git", from: "1.1.0")
 ]
 ```
 

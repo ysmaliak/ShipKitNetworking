@@ -49,7 +49,7 @@ public struct Request<Response: Decodable>: Sendable {
     ///   - authenticationPolicy: Authentication policy for the request
     public init(
         method: HTTPMethod,
-        baseURL: URL? = APIClient.configuration.baseURL,
+        baseURL: URL? = NetworkManager.configuration.baseURL,
         path: String,
         contentType: ContentType,
         query: [String: String]? = nil,
@@ -150,7 +150,7 @@ public struct Request<Response: Decodable>: Sendable {
         try await authenticationPolicy.provider.authenticate(&urlRequest)
 
         if let body {
-            urlRequest.httpBody = try APIClient.configuration.encoder.encode(body)
+            urlRequest.httpBody = try NetworkManager.configuration.encoder.encode(body)
 
             if urlRequest.value(forHTTPHeaderField: "Content-Type") == nil {
                 urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")

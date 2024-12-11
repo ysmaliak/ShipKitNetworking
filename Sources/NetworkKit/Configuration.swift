@@ -1,19 +1,19 @@
 import Foundation
 
-/// Configuration settings for the API client.
+/// Configuration settings for the NetworkKit client.
 ///
 /// This struct encapsulates all configuration options needed to customize the behavior
 /// of network requests, including URL configuration, session settings, and data encoding/decoding.
 ///
 /// Example usage:
 /// ```swift
-/// var config = APIConfiguration()
+/// var config = NetworkKit.Configuration()
 /// config.baseURL = URL(string: "https://api.example.com")
 /// config.decoder = .iso8601
 ///
-/// APIClient.configuration = config
+/// NetworkKit.configure(with: config)
 /// ```
-public struct APIConfiguration {
+public struct Configuration: Sendable {
     /// The base URL for all network requests.
     ///
     /// This URL will be used as the prefix for all relative paths in requests.

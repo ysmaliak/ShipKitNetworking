@@ -45,24 +45,21 @@ public protocol APIClientProtocol: Sendable {
 /// )
 /// ```
 public actor APIClient: APIClientProtocol {
-    /// Global configuration settings for all API clients
-    public static var configuration = APIConfiguration()
-
     /// The URLSession used for network requests
     ///
     /// Created lazily with the current configuration settings
     private var session: URLSession {
-        URLSession(configuration: APIClient.configuration.urlSessionConfiguration)
+        URLSession(configuration: NetworkManager.configuration.urlSessionConfiguration)
     }
 
     /// JSON decoder used for parsing responses
-    private var decoder: JSONDecoder { APIClient.configuration.decoder }
+    private var decoder: JSONDecoder { NetworkManager.configuration.decoder }
 
     /// JSON encoder used for request bodies
-    private var encoder: JSONEncoder { APIClient.configuration.encoder }
+    private var encoder: JSONEncoder { NetworkManager.configuration.encoder }
 
     /// Cache for storing and retrieving responses
-    private var cache: URLCache { APIClient.configuration.cache }
+    private var cache: URLCache { NetworkManager.configuration.cache }
 
     /// Creates a new APIClient with the specified configuration.
     public init() {}
