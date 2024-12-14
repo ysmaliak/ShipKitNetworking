@@ -35,9 +35,6 @@ public struct Request<Response: Decodable>: Sendable {
     /// Authentication provider for the request
     public let authenticationProvider: AuthenticationProvider
 
-    /// Retry configuration for the request
-    public let retryPolicy: RetryPolicy
-
     /// Creates a new request with a base URL and path
     /// - Parameters:
     ///   - method: The HTTP method
@@ -60,8 +57,7 @@ public struct Request<Response: Decodable>: Sendable {
         body: Body? = nil,
         timeoutInterval: TimeInterval? = 30,
         cachePolicy: URLRequest.CachePolicy = .reloadIgnoringLocalAndRemoteCacheData,
-        authenticationProvider: AuthenticationProvider = NoAuthProvider(),
-        retryPolicy: RetryPolicy = DefaultRetryPolicy()
+        authenticationProvider: AuthenticationProvider = NoAuthProvider()
     ) {
         self.method = method
         self.baseURL = baseURL
@@ -74,7 +70,6 @@ public struct Request<Response: Decodable>: Sendable {
         self.timeoutInterval = timeoutInterval
         self.cachePolicy = cachePolicy
         self.authenticationProvider = authenticationProvider
-        self.retryPolicy = retryPolicy
     }
 
     /// Creates a new request with an absolute URL
@@ -97,8 +92,7 @@ public struct Request<Response: Decodable>: Sendable {
         body: Body? = nil,
         timeoutInterval: TimeInterval? = 30,
         cachePolicy: URLRequest.CachePolicy = .reloadIgnoringLocalAndRemoteCacheData,
-        authenticationProvider: AuthenticationProvider = NoAuthProvider(),
-        retryPolicy: RetryPolicy = DefaultRetryPolicy()
+        authenticationProvider: AuthenticationProvider = NoAuthProvider()
     ) {
         self.method = method
         baseURL = nil
@@ -111,7 +105,6 @@ public struct Request<Response: Decodable>: Sendable {
         self.timeoutInterval = timeoutInterval
         self.cachePolicy = cachePolicy
         self.authenticationProvider = authenticationProvider
-        self.retryPolicy = retryPolicy
     }
 
     /// Converts the request into a URLRequest
@@ -142,10 +135,6 @@ public struct Request<Response: Decodable>: Sendable {
                 timeoutInterval: timeoutInterval
             )
         }
-    }
-
-    public func shouldRetry(for response: HTTPURLResponse, data: Data) async throws -> Bool {
-        try await retryPolicy.shouldRetry(for: response, data: data, authenticationProvider: authenticationProvider)
     }
 
     /// Creates a URLRequest for JSON content type
