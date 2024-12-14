@@ -6,30 +6,16 @@ import Foundation
 /// functionality that can be mocked.
 public protocol APIClientProtocol: Sendable {
     /// Sends a network request and decodes the response.
-    func send<T: Decodable & Sendable>(
-        _ request: Request<T>,
-        cached: Bool,
-        retryPolicy: RetryPolicy
-    ) async throws -> T
+    func send<T: Decodable & Sendable>(_ request: Request<T>, cached: Bool) async throws -> T
 
     /// Uploads data with a network request and decodes the response.
-    func upload<T: Decodable & Sendable>(
-        for request: Request<T>,
-        from data: Data,
-        retryPolicy: RetryPolicy
-    ) async throws -> T
+    func upload<T: Decodable & Sendable>(for request: Request<T>, from data: Data) async throws -> T
 
     /// Downloads data from a URL with retry support.
-    func data(
-        for request: Request<Data>,
-        retryPolicy: RetryPolicy
-    ) async throws -> Data
+    func data(for request: Request<Data>) async throws -> Data
 
     /// Downloads data from a raw URL with retry support.
-    func data(
-        for url: URL,
-        retryPolicy: RetryPolicy
-    ) async throws -> Data
+    func data(for url: URL, retryPolicy: RetryPolicy) async throws -> Data
 }
 
 /// An actor that handles network requests with built-in retry and authentication support.
@@ -73,20 +59,16 @@ public actor APIClient: APIClientProtocol {
     /// - Returns: The decoded response of type T
     /// - Throws: APIError or any error from the network request or decoding
     @discardableResult
-    public func send<T: Decodable & Sendable>(
-        _ request: Request<T>,
-        cached: Bool = false,
-        retryPolicy: RetryPolicy = DefaultRetryPolicy()
-    ) async throws -> T {
+    public func send<T: Decodable & Sendable>(_ request: Request<T>, cached: Bool) async throws -> T {
         let urlRequest = try await request.asURLRequest()
 
-        let (data, response) = try await handleCachedResponse(for: urlRequest, cached: cached)
+        let (data, response) = try await fetchResponse(for: urlRequest, useCaching: cached)
 
         guard let response = response as? HTTPURLResponse else {
             throw APIError.invalidResponse
         }
 
-        return try await handleResponse(response, data: data, for: request, cached: cached, retryPolicy: retryPolicy)
+        return try await handleResponse(response, data: data, for: request, cached: cached)
     }
 
     /// Uploads data with a network request and decodes the response.
@@ -94,15 +76,10 @@ public actor APIClient: APIClientProtocol {
     /// - Parameters:
     ///   - request: The typed request to send
     ///   - data: The data to upload
-    ///   - retryPolicy: Policy determining retry behavior for failed requests
     /// - Returns: The decoded response of type T
     /// - Throws: APIError or any error from the network request or decoding
     @discardableResult
-    public func upload<T: Decodable & Sendable>(
-        for request: Request<T>,
-        from data: Data,
-        retryPolicy: RetryPolicy = DefaultRetryPolicy()
-    ) async throws -> T {
+    public func upload<T: Decodable & Sendable>(for request: Request<T>, from data: Data) async throws -> T {
         let urlRequest = try await request.asURLRequest()
         let (responseData, response) = try await session.upload(for: urlRequest, from: data)
 
@@ -110,7 +87,7 @@ public actor APIClient: APIClientProtocol {
             throw APIError.invalidResponse
         }
 
-        return try await handleResponse(response, data: responseData, for: request, cached: false, retryPolicy: retryPolicy)
+        return try await handleResponse(response, data: responseData, for: request, cached: false)
     }
 
     /// Downloads data from a URL with retry support.
@@ -120,7 +97,7 @@ public actor APIClient: APIClientProtocol {
     ///   - retryPolicy: Policy determining retry behavior for failed requests
     /// - Returns: The downloaded data
     /// - Throws: APIError or any network request error
-    public func data(for request: Request<Data>, retryPolicy: RetryPolicy = DefaultRetryPolicy()) async throws -> Data {
+    public func data(for request: Request<Data>) async throws -> Data {
         let urlRequest = try await request.asURLRequest()
         let (data, response) = try await session.data(for: urlRequest)
 
@@ -128,7 +105,7 @@ public actor APIClient: APIClientProtocol {
             throw APIError.invalidResponse
         }
 
-        return try await handleResponse(response, data: data, for: request, cached: false, retryPolicy: retryPolicy)
+        return try await handleResponse(response, data: data, for: request, cached: false)
     }
 
     /// Downloads data from a raw URL with retry support.
@@ -147,32 +124,27 @@ public actor APIClient: APIClientProtocol {
         }
 
         guard 200 ... 299 ~= response.statusCode else {
-            let error = APIError.httpError(response: response, data: data)
-            if retryPolicy.shouldRetry(error) {
-                var retryPolicy = retryPolicy
-                retryPolicy.currentAttempt += 1
-                return try await self.data(for: url, retryPolicy: retryPolicy)
+            guard try await retryPolicy.shouldRetry(for: response, data: data, authenticationProvider: NoAuthProvider()) else {
+                throw APIError.httpError(response: response, data: data)
             }
-            throw error
+
+            return try await self.data(for: url, retryPolicy: retryPolicy)
         }
 
         return data
     }
 
-    private func handleCachedResponse(
-        for request: URLRequest,
-        cached: Bool
-    ) async throws -> (Data, URLResponse) {
-        if cached, let cachedResponse = cache.cachedResponse(for: request) {
+    private func fetchResponse(for request: URLRequest, useCaching: Bool) async throws -> (Data, URLResponse) {
+        if useCaching, let cachedResponse = cache.cachedResponse(for: request) {
             return (cachedResponse.data, cachedResponse.response)
         }
-        
+
         let (data, response) = try await session.data(for: request)
-        
-        if cached {
+
+        if useCaching {
             cache.storeCachedResponse(CachedURLResponse(response: response, data: data), for: request)
         }
-        
+
         return (data, response)
     }
 
@@ -180,31 +152,14 @@ public actor APIClient: APIClientProtocol {
         _ response: HTTPURLResponse,
         data: Data,
         for request: Request<T>,
-        cached: Bool,
-        retryPolicy: RetryPolicy
+        cached: Bool
     ) async throws -> T {
         guard 200 ... 299 ~= response.statusCode else {
-            let error = APIError.httpError(response: response, data: data)
-            
-            // Handle authentication errors
-            if request.authenticationProvider.authenticationErrorStatusCodes.contains(response.statusCode) {
-                var retryPolicy = retryPolicy
-                retryPolicy.currentAttempt += 1
-                guard try await request.authenticationProvider.attemptAuthenticationRecovery(
-                    for: response,
-                    responseData: data
-                ) else { throw error }
-                return try await send(request, cached: cached, retryPolicy: retryPolicy)
-            }
-            // Handle other retryable errors
-            else if retryPolicy.shouldRetry(error) {
-                var retryPolicy = retryPolicy
-                retryPolicy.currentAttempt += 1
-                try await Task.sleep(nanoseconds: UInt64(retryPolicy.delay() * 1_000_000_000))
-                return try await send(request, cached: cached, retryPolicy: retryPolicy)
+            guard try await request.shouldRetry(for: response, data: data) else {
+                throw APIError.httpError(response: response, data: data)
             }
 
-            throw error
+            return try await send(request, cached: cached)
         }
 
         return try decoder.decode(T.self, from: data)
