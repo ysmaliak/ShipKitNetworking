@@ -210,9 +210,11 @@ extension Request {
 
     /// Represents the content type of the request
     public enum ContentType: Sendable {
-        /// JSON content type
+        /// JSON content type with application/json MIME type
         case json
-        /// Multipart form data content type with fields
+
+        /// Multipart form data content type for file uploads and form submissions
+        /// - Parameter fields: Array of multipart form fields to be included in the request
         case multipartData([MultipartDataField])
     }
 }

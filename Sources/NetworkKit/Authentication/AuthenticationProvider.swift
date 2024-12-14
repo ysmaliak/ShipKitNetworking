@@ -8,6 +8,7 @@ public protocol AuthenticationProvider: Sendable {
     func authenticate(_ request: inout URLRequest) async throws
 
     /// Attempts to recover from an authentication error
+    /// - Throws: Any error that occurs during re-authentication
     func reauthenticate() async throws
 }
 
