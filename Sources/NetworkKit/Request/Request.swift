@@ -57,7 +57,7 @@ public struct Request<Response: Decodable>: Sendable {
         body: Body? = nil,
         timeoutInterval: TimeInterval? = 30,
         cachePolicy: URLRequest.CachePolicy = .reloadIgnoringLocalAndRemoteCacheData,
-        authenticationProvider: AuthenticationProvider = NoAuthProvider.none
+        authenticationProvider: AuthenticationProvider = NoAuthProvider()
     ) {
         self.method = method
         self.baseURL = baseURL
@@ -92,7 +92,7 @@ public struct Request<Response: Decodable>: Sendable {
         body: Body? = nil,
         timeoutInterval: TimeInterval? = 30,
         cachePolicy: URLRequest.CachePolicy = .reloadIgnoringLocalAndRemoteCacheData,
-        authenticationProvider: AuthenticationProvider = NoAuthProvider.none
+        authenticationProvider: AuthenticationProvider = NoAuthProvider()
     ) {
         self.method = method
         baseURL = nil

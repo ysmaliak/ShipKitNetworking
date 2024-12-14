@@ -46,8 +46,7 @@ public struct MultipartData {
     ///   - headers: Optional additional HTTP headers
     ///   - cachePolicy: Cache policy for the request
     ///   - timeoutInterval: Optional timeout duration
-    ///   - retryPolicy: Policy for request retries
-    ///   - authenticationPolicy: Policy for request authentication
+    ///   - authenticationProvider: Provider for request authentication
     /// - Returns: A configured URLRequest
     /// - Throws: Authentication errors or other request creation errors
     public func asURLRequest(
@@ -56,26 +55,30 @@ public struct MultipartData {
         headers: [String: String]?,
         cachePolicy: URLRequest.CachePolicy = .reloadIgnoringLocalAndRemoteCacheData,
         timeoutInterval: TimeInterval? = 30,
-        retryPolicy _: RetryPolicy = .default,
-        authenticationPolicy: AuthenticationPolicy = .none
+        authenticationProvider: AuthenticationProvider = NoAuthProvider()
     ) async throws -> URLRequest {
         var urlRequest = URLRequest(url: url)
         urlRequest.cachePolicy = cachePolicy
 
-        try await authenticationPolicy.provider.authenticate(&urlRequest)
+        // Apply authentication
+        try await authenticationProvider.authenticate(&urlRequest)
 
+        // Add custom headers
         if let headers {
             for header in headers where urlRequest.value(forHTTPHeaderField: header.0) == nil {
                 urlRequest.setValue(header.1, forHTTPHeaderField: header.0)
             }
         }
 
+        // Configure multipart form data
         urlRequest.httpMethod = method.rawValue
         urlRequest.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
 
+        // Finalize body data
         httpBody.append(string: "--\(boundary)--")
         urlRequest.httpBody = httpBody as Data
 
+        // Set timeout if specified
         if let timeoutInterval {
             urlRequest.timeoutInterval = timeoutInterval
         }

@@ -76,7 +76,7 @@ public actor APIClient: APIClientProtocol {
     public func send<T: Decodable & Sendable>(
         _ request: Request<T>,
         cached: Bool = false,
-        retryPolicy: RetryPolicy = .default
+        retryPolicy: RetryPolicy = DefaultRetryPolicy()
     ) async throws -> T {
         let urlRequest = try await request.asURLRequest()
 
@@ -101,7 +101,7 @@ public actor APIClient: APIClientProtocol {
     public func upload<T: Decodable & Sendable>(
         for request: Request<T>,
         from data: Data,
-        retryPolicy: RetryPolicy = .default
+        retryPolicy: RetryPolicy = DefaultRetryPolicy()
     ) async throws -> T {
         let urlRequest = try await request.asURLRequest()
         let (responseData, response) = try await session.upload(for: urlRequest, from: data)
@@ -120,7 +120,7 @@ public actor APIClient: APIClientProtocol {
     ///   - retryPolicy: Policy determining retry behavior for failed requests
     /// - Returns: The downloaded data
     /// - Throws: APIError or any network request error
-    public func data(for request: Request<Data>, retryPolicy: RetryPolicy = .default) async throws -> Data {
+    public func data(for request: Request<Data>, retryPolicy: RetryPolicy = DefaultRetryPolicy()) async throws -> Data {
         let urlRequest = try await request.asURLRequest()
         let (data, response) = try await session.data(for: urlRequest)
 
@@ -138,7 +138,7 @@ public actor APIClient: APIClientProtocol {
     ///   - retryPolicy: Policy determining retry behavior for failed requests
     /// - Returns: The downloaded data
     /// - Throws: APIError or any network request error
-    public func data(for url: URL, retryPolicy: RetryPolicy = .default) async throws -> Data {
+    public func data(for url: URL, retryPolicy: RetryPolicy = DefaultRetryPolicy()) async throws -> Data {
         let urlRequest = URLRequest(url: url)
         let (data, response) = try await session.data(for: urlRequest)
 
@@ -148,7 +148,7 @@ public actor APIClient: APIClientProtocol {
 
         guard 200 ... 299 ~= response.statusCode else {
             let error = APIError.httpError(response: response, data: data)
-            if retryPolicy.strategy.shouldRetry(error, attempt: retryPolicy.currentAttempt) {
+            if retryPolicy.shouldRetry(error) {
                 var retryPolicy = retryPolicy
                 retryPolicy.currentAttempt += 1
                 return try await self.data(for: url, retryPolicy: retryPolicy)
@@ -176,7 +176,7 @@ public actor APIClient: APIClientProtocol {
         return (data, response)
     }
 
-    private func handleResponse<T: Decodable>(
+    private func handleResponse<T: Decodable & Sendable>(
         _ response: HTTPURLResponse,
         data: Data,
         for request: Request<T>,
@@ -186,9 +186,8 @@ public actor APIClient: APIClientProtocol {
         guard 200 ... 299 ~= response.statusCode else {
             let error = APIError.httpError(response: response, data: data)
             
-            // Handle authentication errors using provider's status codes
-            if retryPolicy.strategy.shouldRetry(error, attempt: retryPolicy.currentAttempt),
-               request.authenticationProvider.authenticationErrorStatusCodes.contains(response.statusCode) {
+            // Handle authentication errors
+            if request.authenticationProvider.authenticationErrorStatusCodes.contains(response.statusCode) {
                 var retryPolicy = retryPolicy
                 retryPolicy.currentAttempt += 1
                 guard try await request.authenticationProvider.attemptAuthenticationRecovery(
@@ -198,9 +197,10 @@ public actor APIClient: APIClientProtocol {
                 return try await send(request, cached: cached, retryPolicy: retryPolicy)
             }
             // Handle other retryable errors
-            else if retryPolicy.strategy.shouldRetry(error, attempt: retryPolicy.currentAttempt) {
+            else if retryPolicy.shouldRetry(error) {
                 var retryPolicy = retryPolicy
                 retryPolicy.currentAttempt += 1
+                try await Task.sleep(nanoseconds: UInt64(retryPolicy.delay() * 1_000_000_000))
                 return try await send(request, cached: cached, retryPolicy: retryPolicy)
             }
 

@@ -19,10 +19,6 @@ public protocol AuthenticationProvider: Sendable {
     func attemptAuthenticationRecovery(for response: HTTPURLResponse, responseData: Data?) async throws -> Bool
 }
 
-extension AuthenticationProvider {
-    public static var none: Self { NoAuthProvider() }
-}
-
 /// A no-op authentication provider that performs no authentication
 public struct NoAuthProvider: AuthenticationProvider {
     public init() {}
