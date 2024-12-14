@@ -31,3 +31,18 @@ public final actor DefaultRetryPolicy: RetryPolicy {
         return false
     }
 }
+
+extension RetryPolicy where Self == DefaultRetryPolicy {
+    /// A static property that returns a DefaultRetryPolicy instance.
+    /// Provides exponential backoff with authentication handling.
+    ///
+    /// Example:
+    /// ```swift
+    /// let request = Request<Data>(
+    ///     method: .get,
+    ///     path: "/data",
+    ///     retryPolicy: .default
+    /// )
+    /// ```
+    public static var `default`: DefaultRetryPolicy { DefaultRetryPolicy() }
+}

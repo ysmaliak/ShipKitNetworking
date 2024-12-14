@@ -20,3 +20,18 @@ public struct NoAuthProvider: AuthenticationProvider {
 
     public func reauthenticate() async throws {}
 }
+
+extension AuthenticationProvider where Self == NoAuthProvider {
+    /// A static property that returns a NoAuthProvider instance.
+    /// Allows for more concise syntax when specifying no authentication is needed.
+    ///
+    /// Example:
+    /// ```swift
+    /// let request = Request<Data>(
+    ///     method: .get,
+    ///     path: "/public/data",
+    ///     authenticationProvider: .none
+    /// )
+    /// ```
+    public static var none: NoAuthProvider { NoAuthProvider() }
+}

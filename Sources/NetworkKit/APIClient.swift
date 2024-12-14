@@ -61,7 +61,7 @@ public actor APIClient: APIClientProtocol {
     @discardableResult
     public func send<T: Decodable & Sendable>(
         _ request: Request<T>,
-        retryPolicy: RetryPolicy = DefaultRetryPolicy(),
+        retryPolicy: RetryPolicy = .default,
         cached: Bool = false
     ) async throws -> T {
         let urlRequest = try await request.asURLRequest()
@@ -87,7 +87,7 @@ public actor APIClient: APIClientProtocol {
     public func upload<T: Decodable & Sendable>(
         for request: Request<T>,
         from data: Data,
-        retryPolicy: RetryPolicy = DefaultRetryPolicy()
+        retryPolicy: RetryPolicy = .default
     ) async throws -> T {
         let urlRequest = try await request.asURLRequest()
         let (responseData, response) = try await session.upload(for: urlRequest, from: data)
@@ -106,7 +106,7 @@ public actor APIClient: APIClientProtocol {
     ///   - retryPolicy: Policy determining retry behavior for failed requests
     /// - Returns: The downloaded data
     /// - Throws: APIError or any network request error
-    public func data(for request: Request<Data>, retryPolicy: RetryPolicy = DefaultRetryPolicy()) async throws -> Data {
+    public func data(for request: Request<Data>, retryPolicy: RetryPolicy = .default) async throws -> Data {
         let urlRequest = try await request.asURLRequest()
         let (data, response) = try await session.data(for: urlRequest)
 
@@ -124,7 +124,7 @@ public actor APIClient: APIClientProtocol {
     ///   - retryPolicy: Policy determining retry behavior for failed requests
     /// - Returns: The downloaded data
     /// - Throws: APIError or any network request error
-    public func data(for url: URL, retryPolicy: RetryPolicy = DefaultRetryPolicy()) async throws -> Data {
+    public func data(for url: URL, retryPolicy: RetryPolicy = .default) async throws -> Data {
         let urlRequest = URLRequest(url: url)
         let (data, response) = try await session.data(for: urlRequest)
 
