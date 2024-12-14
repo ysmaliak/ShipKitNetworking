@@ -1,25 +1,10 @@
 import Foundation
 
-/// A policy that defines how authentication should be handled for network requests
-public struct AuthenticationPolicy: Sendable {
-    /// The provider responsible for handling authentication operations
-    public var provider: AuthenticationProvider
-
-    /// Creates a new authentication policy with the specified provider
-    /// - Parameter provider: The authentication provider to use
-    public init(provider: AuthenticationProvider) {
-        self.provider = provider
-    }
-
-    /// A policy that performs no authentication
-    /// - Returns: An authentication policy with a `NoAuthProvider`
-    public static var none: Self {
-        AuthenticationPolicy(provider: NoAuthProvider())
-    }
-}
-
-/// A protocol defining the requirements for an authentication provider
+/// A protocol defining the requirements for authentication handling
 public protocol AuthenticationProvider: Sendable {
+    /// Set of HTTP status codes that should trigger authentication recovery
+    var authenticationErrorStatusCodes: Set<Int> { get }
+    
     /// Authenticates a URL request by modifying it as needed (e.g., adding auth headers)
     /// - Parameter request: The request to authenticate
     /// - Throws: Any error that occurs during authentication
@@ -34,19 +19,18 @@ public protocol AuthenticationProvider: Sendable {
     func attemptAuthenticationRecovery(for response: HTTPURLResponse, responseData: Data?) async throws -> Bool
 }
 
+extension AuthenticationProvider {
+    public static var none: Self { NoAuthProvider() }
+}
+
 /// A no-op authentication provider that performs no authentication
 public struct NoAuthProvider: AuthenticationProvider {
     public init() {}
 
-    /// Does nothing to the request
-    /// - Parameter request: The request that won't be modified
+    public var authenticationErrorStatusCodes: Set<Int> = []
+
     public func authenticate(_: inout URLRequest) async throws {}
 
-    /// Always returns false as no recovery is possible
-    /// - Parameters:
-    ///   - response: Ignored
-    ///   - responseData: Ignored
-    /// - Returns: Always returns false
     public func attemptAuthenticationRecovery(for _: HTTPURLResponse, responseData _: Data?) async throws -> Bool {
         false
     }

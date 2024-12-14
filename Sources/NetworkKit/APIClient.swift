@@ -80,50 +80,13 @@ public actor APIClient: APIClientProtocol {
     ) async throws -> T {
         let urlRequest = try await request.asURLRequest()
 
-        let data: Data
-        let response: URLResponse
-
-        // Handle cached responses
-        if cached, let cachedResponse = cache.cachedResponse(for: urlRequest) {
-            data = cachedResponse.data
-            response = cachedResponse.response
-        } else {
-            (data, response) = try await session.data(for: urlRequest)
-
-            if cached {
-                cache.storeCachedResponse(CachedURLResponse(response: response, data: data), for: urlRequest)
-            }
-        }
+        let (data, response) = try await handleCachedResponse(for: urlRequest, cached: cached)
 
         guard let response = response as? HTTPURLResponse else {
             throw APIError.invalidResponse
         }
 
-        // Handle HTTP errors and retry logic
-        guard 200 ... 299 ~= response.statusCode else {
-            let error = APIError.httpError(response: response, data: data)
-            // Handle authentication errors
-            if retryPolicy.strategy.shouldRetry(error, attempt: retryPolicy.currentAttempt),
-               response.statusCode == 403 || response.statusCode == 401 {
-                var retryPolicy = retryPolicy
-                retryPolicy.currentAttempt += 1
-                guard try await request.authenticationPolicy.provider.attemptAuthenticationRecovery(
-                    for: response,
-                    responseData: data
-                ) else { throw error }
-                return try await send(request, cached: cached, retryPolicy: retryPolicy)
-            }
-            // Handle other retryable errors
-            else if retryPolicy.strategy.shouldRetry(error, attempt: retryPolicy.currentAttempt) {
-                var retryPolicy = retryPolicy
-                retryPolicy.currentAttempt += 1
-                return try await send(request, cached: cached, retryPolicy: retryPolicy)
-            }
-
-            throw APIError.httpError(response: response, data: data)
-        }
-
-        return try decoder.decode(T.self, from: data)
+        return try await handleResponse(response, data: data, for: request, cached: cached, retryPolicy: retryPolicy)
     }
 
     /// Uploads data with a network request and decodes the response.
@@ -141,37 +104,13 @@ public actor APIClient: APIClientProtocol {
         retryPolicy: RetryPolicy = .default
     ) async throws -> T {
         let urlRequest = try await request.asURLRequest()
-        let (data, response) = try await session.upload(for: urlRequest, from: data)
+        let (responseData, response) = try await session.upload(for: urlRequest, from: data)
 
         guard let response = response as? HTTPURLResponse else {
             throw APIError.invalidResponse
         }
 
-        // Handle HTTP errors and retry logic
-        guard 200 ... 299 ~= response.statusCode else {
-            let error = APIError.httpError(response: response, data: data)
-            // Handle authentication errors (401, 403)
-            if retryPolicy.strategy.shouldRetry(error, attempt: retryPolicy.currentAttempt),
-               response.statusCode == 403 || response.statusCode == 401 {
-                var retryPolicy = retryPolicy
-                retryPolicy.currentAttempt += 1
-                guard try await request.authenticationPolicy.provider.attemptAuthenticationRecovery(
-                    for: response,
-                    responseData: data
-                ) else { throw error }
-                return try await upload(for: request, from: data, retryPolicy: retryPolicy)
-            }
-            // Handle other retryable errors
-            else if retryPolicy.strategy.shouldRetry(error, attempt: retryPolicy.currentAttempt) {
-                var retryPolicy = retryPolicy
-                retryPolicy.currentAttempt += 1
-                return try await upload(for: request, from: data, retryPolicy: retryPolicy)
-            }
-
-            throw error
-        }
-
-        return try decoder.decode(T.self, from: data)
+        return try await handleResponse(response, data: responseData, for: request, cached: false, retryPolicy: retryPolicy)
     }
 
     /// Downloads data from a URL with retry support.
@@ -189,31 +128,7 @@ public actor APIClient: APIClientProtocol {
             throw APIError.invalidResponse
         }
 
-        // Handle HTTP errors and retry logic
-        guard 200 ... 299 ~= response.statusCode else {
-            let error = APIError.httpError(response: response, data: data)
-            // Handle authentication errors
-            if retryPolicy.strategy.shouldRetry(error, attempt: retryPolicy.currentAttempt),
-               response.statusCode == 403 || response.statusCode == 401 {
-                var retryPolicy = retryPolicy
-                retryPolicy.currentAttempt += 1
-                guard try await request.authenticationPolicy.provider.attemptAuthenticationRecovery(
-                    for: response,
-                    responseData: data
-                ) else { throw error }
-                return try await self.data(for: request, retryPolicy: retryPolicy)
-            }
-            // Handle other retryable errors
-            else if retryPolicy.strategy.shouldRetry(error, attempt: retryPolicy.currentAttempt) {
-                var retryPolicy = retryPolicy
-                retryPolicy.currentAttempt += 1
-                return try await self.data(for: request, retryPolicy: retryPolicy)
-            }
-
-            throw APIError.httpError(response: response, data: data)
-        }
-
-        return data
+        return try await handleResponse(response, data: data, for: request, cached: false, retryPolicy: retryPolicy)
     }
 
     /// Downloads data from a raw URL with retry support.
@@ -231,7 +146,6 @@ public actor APIClient: APIClientProtocol {
             throw APIError.invalidResponse
         }
 
-        // Handle HTTP errors and retry logic
         guard 200 ... 299 ~= response.statusCode else {
             let error = APIError.httpError(response: response, data: data)
             if retryPolicy.strategy.shouldRetry(error, attempt: retryPolicy.currentAttempt) {
@@ -239,10 +153,60 @@ public actor APIClient: APIClientProtocol {
                 retryPolicy.currentAttempt += 1
                 return try await self.data(for: url, retryPolicy: retryPolicy)
             }
-
-            throw APIError.httpError(response: response, data: data)
+            throw error
         }
 
         return data
+    }
+
+    private func handleCachedResponse(
+        for request: URLRequest,
+        cached: Bool
+    ) async throws -> (Data, URLResponse) {
+        if cached, let cachedResponse = cache.cachedResponse(for: request) {
+            return (cachedResponse.data, cachedResponse.response)
+        }
+        
+        let (data, response) = try await session.data(for: request)
+        
+        if cached {
+            cache.storeCachedResponse(CachedURLResponse(response: response, data: data), for: request)
+        }
+        
+        return (data, response)
+    }
+
+    private func handleResponse<T: Decodable>(
+        _ response: HTTPURLResponse,
+        data: Data,
+        for request: Request<T>,
+        cached: Bool,
+        retryPolicy: RetryPolicy
+    ) async throws -> T {
+        guard 200 ... 299 ~= response.statusCode else {
+            let error = APIError.httpError(response: response, data: data)
+            
+            // Handle authentication errors using provider's status codes
+            if retryPolicy.strategy.shouldRetry(error, attempt: retryPolicy.currentAttempt),
+               request.authenticationProvider.authenticationErrorStatusCodes.contains(response.statusCode) {
+                var retryPolicy = retryPolicy
+                retryPolicy.currentAttempt += 1
+                guard try await request.authenticationProvider.attemptAuthenticationRecovery(
+                    for: response,
+                    responseData: data
+                ) else { throw error }
+                return try await send(request, cached: cached, retryPolicy: retryPolicy)
+            }
+            // Handle other retryable errors
+            else if retryPolicy.strategy.shouldRetry(error, attempt: retryPolicy.currentAttempt) {
+                var retryPolicy = retryPolicy
+                retryPolicy.currentAttempt += 1
+                return try await send(request, cached: cached, retryPolicy: retryPolicy)
+            }
+
+            throw error
+        }
+
+        return try decoder.decode(T.self, from: data)
     }
 }

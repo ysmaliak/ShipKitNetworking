@@ -32,8 +32,8 @@ public struct Request<Response: Decodable>: Sendable {
     /// Cache policy for the request
     public let cachePolicy: URLRequest.CachePolicy
 
-    /// Authentication policy for the request
-    public let authenticationPolicy: AuthenticationPolicy
+    /// Authentication provider for the request
+    public let authenticationProvider: AuthenticationProvider
 
     /// Creates a new request with a base URL and path
     /// - Parameters:
@@ -46,7 +46,7 @@ public struct Request<Response: Decodable>: Sendable {
     ///   - body: Optional request body
     ///   - timeoutInterval: Optional timeout duration
     ///   - cachePolicy: Cache policy for the request
-    ///   - authenticationPolicy: Authentication policy for the request
+    ///   - authenticationProvider: Authentication provider for the request
     public init(
         method: HTTPMethod,
         baseURL: URL? = NetworkManager.configuration.baseURL,
@@ -57,7 +57,7 @@ public struct Request<Response: Decodable>: Sendable {
         body: Body? = nil,
         timeoutInterval: TimeInterval? = 30,
         cachePolicy: URLRequest.CachePolicy = .reloadIgnoringLocalAndRemoteCacheData,
-        authenticationPolicy: AuthenticationPolicy = .none
+        authenticationProvider: AuthenticationProvider = NoAuthProvider.none
     ) {
         self.method = method
         self.baseURL = baseURL
@@ -69,7 +69,7 @@ public struct Request<Response: Decodable>: Sendable {
         self.body = body
         self.timeoutInterval = timeoutInterval
         self.cachePolicy = cachePolicy
-        self.authenticationPolicy = authenticationPolicy
+        self.authenticationProvider = authenticationProvider
     }
 
     /// Creates a new request with an absolute URL
@@ -82,7 +82,7 @@ public struct Request<Response: Decodable>: Sendable {
     ///   - body: Optional request body
     ///   - timeoutInterval: Optional timeout duration
     ///   - cachePolicy: Cache policy for the request
-    ///   - authenticationPolicy: Authentication policy for the request
+    ///   - authenticationProvider: Authentication provider for the request
     public init(
         method: HTTPMethod,
         absoluteURL: URL,
@@ -92,7 +92,7 @@ public struct Request<Response: Decodable>: Sendable {
         body: Body? = nil,
         timeoutInterval: TimeInterval? = 30,
         cachePolicy: URLRequest.CachePolicy = .reloadIgnoringLocalAndRemoteCacheData,
-        authenticationPolicy: AuthenticationPolicy = .none
+        authenticationProvider: AuthenticationProvider = NoAuthProvider.none
     ) {
         self.method = method
         baseURL = nil
@@ -104,7 +104,7 @@ public struct Request<Response: Decodable>: Sendable {
         self.body = body
         self.timeoutInterval = timeoutInterval
         self.cachePolicy = cachePolicy
-        self.authenticationPolicy = authenticationPolicy
+        self.authenticationProvider = authenticationProvider
     }
 
     /// Converts the request into a URLRequest
@@ -147,7 +147,7 @@ public struct Request<Response: Decodable>: Sendable {
         urlRequest.cachePolicy = cachePolicy
         urlRequest.httpMethod = method.rawValue
 
-        try await authenticationPolicy.provider.authenticate(&urlRequest)
+        try await authenticationProvider.authenticate(&urlRequest)
 
         if let body {
             urlRequest.httpBody = try NetworkManager.configuration.encoder.encode(body)
