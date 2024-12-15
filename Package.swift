@@ -17,17 +17,11 @@ let package = Package(
             targets: ["NetworkKit"]
         )
     ],
-    dependencies: [
-        .package(url: "https://github.com/liamnichols/xcstrings-tool-plugin.git", from: "1.0.0")
-    ],
     targets: [
         .target(
             name: "NetworkKit",
             resources: [
                 .process("Resources/Localizable.xcstrings")
-            ],
-            plugins: [
-                .plugin(name: "XCStringsToolPlugin", package: "xcstrings-tool-plugin")
             ]
         )
     ]
