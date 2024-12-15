@@ -57,11 +57,11 @@ public enum RequestError: Error, LocalizedError {
     public var errorDescription: String? {
         switch self {
         case .invalidURL:
-            String(localized: "requestErrorInvalidURLDescription")
+            String(localized: "requestErrorInvalidURLDescription", bundle: .module)
         case .invalidParameters:
-            String(localized: "requestErrorInvalidParametersDescription")
+            String(localized: "requestErrorInvalidParametersDescription", bundle: .module)
         case .missingBaseURL:
-            String(localized: "requestErrorMissingBaseURLDescription")
+            String(localized: "requestErrorMissingBaseURLDescription", bundle: .module)
         }
     }
 
@@ -72,11 +72,11 @@ public enum RequestError: Error, LocalizedError {
     public var failureReason: String? {
         switch self {
         case .invalidURL:
-            String(localized: "requestErrorInvalidURLReason")
+            String(localized: "requestErrorInvalidURLReason", bundle: .module)
         case .invalidParameters:
-            String(localized: "requestErrorInvalidParametersReason")
+            String(localized: "requestErrorInvalidParametersReason", bundle: .module)
         case .missingBaseURL:
-            String(localized: "requestErrorMissingBaseURLReason")
+            String(localized: "requestErrorMissingBaseURLReason", bundle: .module)
         }
     }
 
@@ -87,11 +87,11 @@ public enum RequestError: Error, LocalizedError {
     public var recoverySuggestion: String? {
         switch self {
         case .invalidURL:
-            String(localized: "requestErrorInvalidURLSuggestion")
+            String(localized: "requestErrorInvalidURLSuggestion", bundle: .module)
         case .invalidParameters:
-            String(localized: "requestErrorInvalidParametersSuggestion")
+            String(localized: "requestErrorInvalidParametersSuggestion", bundle: .module)
         case .missingBaseURL:
-            String(localized: "requestErrorMissingBaseURLSuggestion")
+            String(localized: "requestErrorMissingBaseURLSuggestion", bundle: .module)
         }
     }
 }
