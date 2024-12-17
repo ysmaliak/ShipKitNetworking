@@ -51,13 +51,13 @@ public struct Request<Response: Decodable>: Sendable {
         method: HTTPMethod,
         baseURL: URL? = NetworkManager.configuration.baseURL,
         path: String,
-        contentType: ContentType,
+        contentType: ContentType = .json,
         query: [String: String]? = nil,
         headers: [String: String]? = nil,
         body: Body? = nil,
-        timeoutInterval: TimeInterval? = 30,
-        cachePolicy: URLRequest.CachePolicy = .reloadIgnoringLocalAndRemoteCacheData,
-        authenticationProvider: AuthenticationProvider = NoAuthProvider()
+        timeoutInterval: TimeInterval? = NetworkManager.configuration.timeoutInterval,
+        cachePolicy: URLRequest.CachePolicy = NetworkManager.configuration.cachePolicy,
+        authenticationProvider: AuthenticationProvider = NetworkManager.configuration.authProvider
     ) {
         self.method = method
         self.baseURL = baseURL
@@ -86,13 +86,13 @@ public struct Request<Response: Decodable>: Sendable {
     public init(
         method: HTTPMethod,
         absoluteURL: URL,
-        contentType: ContentType,
+        contentType: ContentType = .json,
         query: [String: String]? = nil,
         headers: [String: String]? = nil,
         body: Body? = nil,
-        timeoutInterval: TimeInterval? = 30,
-        cachePolicy: URLRequest.CachePolicy = .reloadIgnoringLocalAndRemoteCacheData,
-        authenticationProvider: AuthenticationProvider = NoAuthProvider()
+        timeoutInterval: TimeInterval? = NetworkManager.configuration.timeoutInterval,
+        cachePolicy: URLRequest.CachePolicy = NetworkManager.configuration.cachePolicy,
+        authenticationProvider: AuthenticationProvider = NetworkManager.configuration.authProvider
     ) {
         self.method = method
         baseURL = nil

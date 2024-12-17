@@ -1,9 +1,18 @@
 import Foundation
 
 /// A policy that never retries requests
+///
+/// This policy is useful when you want to disable retries for all requests.
 public struct NoRetryPolicy: RetryPolicy {
     public init() {}
 
+    /// This method always returns false, indicating that no retries should be attempted.
+    ///
+    /// - Parameters:
+    ///   - response: The HTTPURLResponse from the request
+    ///   - data: The data returned from the request
+    ///   - authenticationProvider: The authentication provider
+    /// - Returns: Always false, indicating no retries
     public func shouldRetry(
         for _: HTTPURLResponse,
         data _: Data,
