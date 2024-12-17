@@ -73,9 +73,12 @@ NetworkManager.configure(with: config)
 
 The configuration allows you to customize:
 - Base URL for all requests
+- Retry policy for failed requests
+- Authentication provider for all requests
 - URLSession configuration (timeouts, connection limits, TLS settings)
 - JSON encoding/decoding strategies
-- Response caching behavior
+- Response caching behavior and policy
+- Default timeout interval
 
 ## Basic Usage
 
@@ -95,6 +98,19 @@ let createUser = Request<UserResponse>(
     body: UserData(name: "John", email: "john@example.com")
 )
 let response = try await apiClient.send(createUser)
+
+// DELETE request with no response data
+let deleteUser = Request<EmptyResponse>(
+    method: .delete, 
+    path: "/users/123"
+)
+_ = try await apiClient.send(deleteUser)
+
+// Request with absolute URL
+let request = Request<UserData>(
+    method: .get,
+    absoluteURL: URL(string: "https://api.example.com/users/123")!
+)
 ```
 
 ### Authentication
@@ -248,6 +264,44 @@ let response = try await apiClient.upload(
     for: Request<UploadResponse>(method: .post, path: "/upload"),
     from: imageData
 )
+```
+
+### Multipart Form Data
+NetworkKit supports multipart form data for file uploads and form submissions:
+
+```swift
+let imageData = // ... your image data ...
+let fields: [MultipartDataField] = [
+    .file(name: "avatar", filename: "profile.jpg", data: imageData, contentType: "image/jpeg"),
+    .text(name: "username", value: "john_doe")
+]
+
+let request = Request<UploadResponse>(
+    method: .post,
+    path: "/upload",
+    contentType: .multipartData(fields)
+)
+let response = try await apiClient.send(request)
+```
+
+### Error Handling
+NetworkKit provides comprehensive error handling with localized error messages in multiple languages:
+
+```swift
+do {
+    let response = try await apiClient.send(request)
+} catch let error as APIError {
+    switch error {
+    case .invalidResponse:
+        // Handle invalid response
+        print(error.localizedDescription) // "Unable to process server response"
+        print(error.failureReason) // "The response contained unexpected data"
+    case .httpError(let response, let data):
+        // Handle HTTP error with response and data
+        print(error.localizedDescription) // "Request failed"
+        print(error.failureReason) // "The server could not process the request"
+    }
+}
 ```
 
 ## License

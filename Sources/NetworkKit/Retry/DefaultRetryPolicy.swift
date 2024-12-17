@@ -15,16 +15,16 @@ import Foundation
 public final actor DefaultRetryPolicy: RetryPolicy {
     /// Current retry attempt number (0-based)
     private var currentAttempt = 0
-    
+
     /// Maximum number of retry attempts allowed
     private let maxRetries = 3
-    
+
     /// Base delay in seconds for exponential backoff
     private let baseDelay: TimeInterval = 0.3
-    
+
     /// HTTP status codes that trigger authentication retry
     private let authRetryableStatusCodes: Set<Int> = [401, 403]
-    
+
     /// HTTP status codes that trigger general retry with backoff
     private let generalRetryableStatusCodes: Set<Int> = [408, 500, 502, 503, 504]
 
