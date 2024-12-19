@@ -27,24 +27,36 @@ public actor NetworkManager {
     /// Configures NetworkKit with individual custom settings.
     /// - Parameters:
     ///   - baseURL: The base URL to be prepended to all network requests. Defaults to nil.
+    ///   - retryPolicy: The retry policy to be used for all network requests. Defaults to the default retry policy.
+    ///   - authProvider: The authentication provider to be used for all network requests. Defaults to no authentication.
     ///   - urlSessionConfiguration: The URL session configuration to be used for all network requests. Defaults to the default
     /// configuration.
     ///   - decoder: The JSON decoder used for response parsing. Defaults to ISO8601-configured decoder.
     ///   - encoder: The JSON encoder used for request serialization. Defaults to ISO8601-configured encoder.
     ///   - cache: The URL cache for storing responses. Defaults to the shared system cache.
+    ///   - cachePolicy: The cache policy to be used for all network requests. Defaults to .reloadIgnoringLocalAndRemoteCacheData.
+    ///   - timeoutInterval: The timeout interval for all network requests. Defaults to 30 seconds.
     public static func configure(
         baseURL: URL? = nil,
+        retryPolicy: RetryPolicy = .default,
+        authProvider: AuthenticationProvider = .none,
         urlSessionConfiguration: URLSessionConfiguration = .default,
         decoder: JSONDecoder = .iso8601,
         encoder: JSONEncoder = .iso8601,
-        cache: URLCache = .shared
+        cache: URLCache = .shared,
+        cachePolicy: URLRequest.CachePolicy = .reloadIgnoringLocalAndRemoteCacheData,
+        timeoutInterval: TimeInterval = 30
     ) {
         configuration = Configuration(
             baseURL: baseURL,
+            retryPolicy: retryPolicy,
+            authProvider: authProvider,
             urlSessionConfiguration: urlSessionConfiguration,
             decoder: decoder,
             encoder: encoder,
-            cache: cache
+            cache: cache,
+            cachePolicy: cachePolicy,
+            timeoutInterval: timeoutInterval
         )
     }
 }
